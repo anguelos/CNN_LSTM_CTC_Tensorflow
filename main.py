@@ -130,6 +130,7 @@ def train(train_dir=None, val_dir=None, mode='train'):
                     print(log.format(now.month, now.day, now.hour, now.minute, now.second,
                                      cur_epoch + 1, FLAGS.num_epochs, accuracy, avg_train_cost,
                                      lastbatch_err, time.time() - start_time, lr))
+                    tf.summary.scalar('Test accuracy', acc_batch_total)
 
 
 def infer(img_path, mode='infer'):
