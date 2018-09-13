@@ -82,7 +82,7 @@ class LSTMOCR(object):
                 initial_state = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
                 # The second output is the last state and we will not use that
-                left2right_outputs, _ = tf.nn.dynamic_rnn(
+                x, _ = tf.nn.dynamic_rnn(
                     cell=stack,
                     inputs=x,
                     sequence_length=self.seq_len,
@@ -106,7 +106,7 @@ class LSTMOCR(object):
                 stack2 = tf.nn.rnn_cell.MultiRNNCell([cell2, cell3], state_is_tuple=True)
                 initial_state2 = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
-                x=tf.reverse_sequence(left2right_outputs,self.seq_len,seq_axis=1)
+                x=tf.reverse_sequence(x,self.seq_len,seq_axis=1)
 
                 # The second output is the last state and we will not use that
                 x, _ = tf.nn.dynamic_rnn(
@@ -117,7 +117,7 @@ class LSTMOCR(object):
                     dtype=tf.float32,
                     time_major=False
                 )  # [batch_size, max_stepsize, FLAGS.num_hidden]
-                right2left_outputs = tf.reverse_sequence(outputs, self.seq_len, seq_axis=1)
+                x = tf.reverse_sequence(x, self.seq_len, seq_axis=1)
 
             with tf.variable_scope('l2r2'):
 
@@ -136,7 +136,7 @@ class LSTMOCR(object):
                 # The second output is the last state and we will not use that
                 left2right_outputs, _ = tf.nn.dynamic_rnn(
                     cell=stack3,
-                    inputs=right2left_outputs,
+                    inputs=x,
                     sequence_length=self.seq_len,
                     initial_state=initial_state,
                     dtype=tf.float32,
@@ -144,7 +144,7 @@ class LSTMOCR(object):
                 )  # [batch_size, max_stepsize, FLAGS.num_hidden]
 
             # Reshaping to apply the same weights over the timesteps
-            outputs = tf.reshape(left2right_outputs, [-1, FLAGS.num_hidden])  # [batch_size * max_stepsize, FLAGS.num_hidden]
+            outputs = tf.reshape(x, [-1, FLAGS.num_hidden])  # [batch_size * max_stepsize, FLAGS.num_hidden]
 
             W = tf.get_variable(name='W_out',
                                 shape=[FLAGS.num_hidden, num_classes],
