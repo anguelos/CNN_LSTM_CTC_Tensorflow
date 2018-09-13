@@ -59,12 +59,13 @@ class LSTMOCR(object):
         with tf.variable_scope('lstm'):
             x = tf.transpose(x, [0, 2, 1, 3])  # [batch_size, feature_w, feature_h, FLAGS.out_channels]
             # treat `feature_w` as max_timestep in lstm.
-            x = tf.reshape(x, [FLAGS.batch_size, feature_w, feature_h * FLAGS.out_channels])
+            x = tf.reshape(x, [FLAGS.batch_size, feature_w, feature_h * FLAGS.out_channels]) #BATCH TIME EMBEDING
             print('lstm input shape: {}'.format(x.get_shape().as_list()))
             self.seq_len = tf.fill([x.get_shape().as_list()[0]], feature_w)
             # print('self.seq_len.shape: {}'.format(self.seq_len.shape.as_list()))
 
             # tf.nn.rnn_cell.RNNCell, tf.nn.rnn_cell.GRUCell
+            print("Building LSTM with FLAGS.num_hidden="+str(FLAGS.num_hidden))
             cell = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, state_is_tuple=True)
             if self.mode == 'train':
                 cell = tf.nn.rnn_cell.DropoutWrapper(cell=cell, output_keep_prob=FLAGS.output_keep_prob)
@@ -78,7 +79,7 @@ class LSTMOCR(object):
             initial_state = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
             # The second output is the last state and we will not use that
-            outputs, _ = tf.nn.dynamic_rnn(
+            left2right_outputs, _ = tf.nn.dynamic_rnn(
                 cell=stack,
                 inputs=x,
                 sequence_length=self.seq_len,
@@ -87,8 +88,38 @@ class LSTMOCR(object):
                 time_major=False
             )  # [batch_size, max_stepsize, FLAGS.num_hidden]
 
+            # Right 2 left Lstm
+            cell2 = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, state_is_tuple=True)
+            if self.mode == 'train':
+                cell2 = tf.nn.rnn_cell.DropoutWrapper(cell=cell2, output_keep_prob=FLAGS.output_keep_prob)
+
+            cell3 = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, state_is_tuple=True)
+            if self.mode == 'train':
+                cell3 = tf.nn.rnn_cell.DropoutWrapper(cell=cell3, output_keep_prob=FLAGS.output_keep_prob)
+
+            # Stacking rnn cells
+            stack2 = tf.nn.rnn_cell.MultiRNNCell([cell2, cell3], state_is_tuple=True)
+            initial_state2 = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
+
+            x=tf.reverse_sequence(left2right_outputs,self.seq_len)
+
+            # The second output is the last state and we will not use that
+            outputs, _ = tf.nn.dynamic_rnn(
+                cell=stack2,
+                inputs=x,
+                sequence_length=self.seq_len,
+                initial_state=initial_state2,
+                dtype=tf.float32,
+                time_major=False
+            )  # [batch_size, max_stepsize, FLAGS.num_hidden]
+
+            right2left_outputs = tf.reverse_sequence(outputs,self.seq_len)
+
+
+
+
             # Reshaping to apply the same weights over the timesteps
-            outputs = tf.reshape(outputs, [-1, FLAGS.num_hidden])  # [batch_size * max_stepsize, FLAGS.num_hidden]
+            outputs = tf.reshape(left2right_outputs, [-1, FLAGS.num_hidden])  # [batch_size * max_stepsize, FLAGS.num_hidden]
 
             W = tf.get_variable(name='W_out',
                                 shape=[FLAGS.num_hidden, num_classes],
