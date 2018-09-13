@@ -101,7 +101,7 @@ class LSTMOCR(object):
             stack2 = tf.nn.rnn_cell.MultiRNNCell([cell2, cell3], state_is_tuple=True)
             initial_state2 = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
-            x=tf.reverse_sequence(left2right_outputs,self.seq_len)
+            x=tf.reverse_sequence(left2right_outputs,self.seq_len,seq_dim=1)
 
             # The second output is the last state and we will not use that
             outputs, _ = tf.nn.dynamic_rnn(
@@ -113,7 +113,7 @@ class LSTMOCR(object):
                 time_major=False
             )  # [batch_size, max_stepsize, FLAGS.num_hidden]
 
-            right2left_outputs = tf.reverse_sequence(outputs,self.seq_len)
+            right2left_outputs = tf.reverse_sequence(outputs,self.seq_len,seq_dim=1)
 
 
 
