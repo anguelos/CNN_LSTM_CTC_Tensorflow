@@ -109,7 +109,7 @@ class LSTMOCR(object):
                 x=tf.reverse_sequence(left2right_outputs,self.seq_len,seq_axis=1)
 
                 # The second output is the last state and we will not use that
-                outputs, _ = tf.nn.dynamic_rnn(
+                x, _ = tf.nn.dynamic_rnn(
                     cell=stack2,
                     inputs=x,
                     sequence_length=self.seq_len,
@@ -117,8 +117,31 @@ class LSTMOCR(object):
                     dtype=tf.float32,
                     time_major=False
                 )  # [batch_size, max_stepsize, FLAGS.num_hidden]
+                right2left_outputs = tf.reverse_sequence(outputs, self.seq_len, seq_axis=1)
 
-            right2left_outputs = tf.reverse_sequence(outputs,self.seq_len,seq_axis=1)
+            with tf.variable_scope('l2r2'):
+
+                cell4 = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, state_is_tuple=True)
+                if self.mode == 'train':
+                    cell = tf.nn.rnn_cell.DropoutWrapper(cell=cell4, output_keep_prob=FLAGS.output_keep_prob)
+
+                cell5 = tf.nn.rnn_cell.LSTMCell(FLAGS.num_hidden, state_is_tuple=True)
+                if self.mode == 'train':
+                    cell1 = tf.nn.rnn_cell.DropoutWrapper(cell=cell5, output_keep_prob=FLAGS.output_keep_prob)
+
+                # Stacking rnn cells
+                stack3 = tf.nn.rnn_cell.MultiRNNCell([cell4, cell5], state_is_tuple=True)
+                initial_state = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
+
+                # The second output is the last state and we will not use that
+                left2right_outputs, _ = tf.nn.dynamic_rnn(
+                    cell=stack3,
+                    inputs=right2left_outputs,
+                    sequence_length=self.seq_len,
+                    initial_state=initial_state,
+                    dtype=tf.float32,
+                    time_major=False
+                )  # [batch_size, max_stepsize, FLAGS.num_hidden]
 
             # Reshaping to apply the same weights over the timesteps
             outputs = tf.reshape(left2right_outputs, [-1, FLAGS.num_hidden])  # [batch_size * max_stepsize, FLAGS.num_hidden]
