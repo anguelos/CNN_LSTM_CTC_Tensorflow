@@ -78,7 +78,7 @@ class LSTMOCR(object):
                     cell1 = tf.nn.rnn_cell.DropoutWrapper(cell=cell1, output_keep_prob=FLAGS.output_keep_prob)
 
                 # Stacking rnn cells
-                stack = tf.nn.rnn_cell.MultiRNNCell([cell, cell1], state_is_tuple=True)
+                stack = tf.nn.rnn_cell.MultiRNNCell([cell], state_is_tuple=True)
                 initial_state = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
                 # The second output is the last state and we will not use that
@@ -103,7 +103,7 @@ class LSTMOCR(object):
                     cell3 = tf.nn.rnn_cell.DropoutWrapper(cell=cell3, output_keep_prob=FLAGS.output_keep_prob)
 
                 # Stacking rnn cells
-                stack2 = tf.nn.rnn_cell.MultiRNNCell([cell2, cell3], state_is_tuple=True)
+                stack2 = tf.nn.rnn_cell.MultiRNNCell([cell2], state_is_tuple=True)
                 initial_state2 = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
                 x=tf.reverse_sequence(x,self.seq_len,seq_axis=1)
@@ -130,7 +130,7 @@ class LSTMOCR(object):
                     cell1 = tf.nn.rnn_cell.DropoutWrapper(cell=cell5, output_keep_prob=FLAGS.output_keep_prob)
 
                 # Stacking rnn cells
-                stack3 = tf.nn.rnn_cell.MultiRNNCell([cell4, cell5], state_is_tuple=True)
+                stack3 = tf.nn.rnn_cell.MultiRNNCell([cell4], state_is_tuple=True)
                 initial_state = stack.zero_state(FLAGS.batch_size, dtype=tf.float32)
 
                 # The second output is the last state and we will not use that
