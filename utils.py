@@ -7,8 +7,10 @@ import numpy as np
 import tensorflow as tf
 import cv2
 
+import string
+charset = string.digits+string.ascii_letters+string.punctuation
 # +-* + () + 10 digit + blank + space
-num_classes = 3 + 2 + 10 + 1 + 1
+num_classes = len(charset)+2
 
 maxPrintLen = 100
 
@@ -48,7 +50,6 @@ FLAGS = tf.app.flags.FLAGS
 
 # num_batches_per_epoch = int(num_train_samples/FLAGS.batch_size)
 
-charset = '0123456789+-*()'
 encode_maps = {}
 decode_maps = {}
 for i, char in enumerate(charset, 1):
@@ -60,24 +61,55 @@ SPACE_TOKEN = ''
 encode_maps[SPACE_TOKEN] = SPACE_INDEX
 decode_maps[SPACE_INDEX] = SPACE_TOKEN
 
+def decode_strings(*args):
+    out_string_list=[]
+    for row in range(len(args[0])):
+        res_str=''
+        out_string_list.append([])
+        for col in range(len(args)):
+            word=args[col][row]
+            word=''.join([decode_maps[char] for char in word if char >=0])
+            out_string_list[-1].append(word)
+    res="{\n"+"\n".join([str(n)+":\t"+"\t".join([col for col in line])for n,line in enumerate(out_string_list)])+"\n}"
+    return res
 
 class DataIterator:
     def __init__(self, data_dir):
         self.image = []
         self.labels = []
         for root, sub_folder, file_list in os.walk(data_dir):
+            #print("File length:",len(file_list))
+            if len(self.image)>300000:
+                print("exiting")
+                break
+            else:
+                print("Staying in")
+            #sys.exit()
+            file_list = [fl for fl in file_list if fl[-4:] in [".jpg",".pdf"] and len(self.image)<30000]
+            #if len(self.image)>50.000:
+            #    break
             for file_path in file_list:
-                image_name = os.path.join(root, file_path)
-                im = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
-                # resize to same height, different width will consume time on padding
-                # im = cv2.resize(im, (image_width, image_height))
-                im = np.reshape(im, [FLAGS.image_height, FLAGS.image_width, FLAGS.image_channel])
-                self.image.append(im)
+                if len(self.image)<400000:
+                    image_name = os.path.join(root, file_path)
+                    try:
+                        im = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
+                    except:
+                        im = np.random.rand(32,100)
+                    #im = cv2.resize(im, (FLAGS.image_width, FLAGS.image_height))
+                    im = cv2.resize(im, (im.shape[1], FLAGS.image_height))
+                    im = np.concatenate([im,np.zeros([FLAGS.image_height,FLAGS.image_width])],axis=1)
+                    im = im[:,:FLAGS.image_width]
+                    im = np.reshape(im, [FLAGS.image_height, FLAGS.image_width, FLAGS.image_channel])
+                    self.image.append(im)
 
-                # image is named as /.../<folder>/00000_abcd.png
-                code = image_name.split('/')[-1].split('_')[1].split('.')[0]
-                code = [SPACE_INDEX if code == SPACE_TOKEN else encode_maps[c] for c in list(code)]
-                self.labels.append(code)
+                    # image is named as /.../<folder>/00000_abcd.png
+                    print(image_name)
+                    code = image_name.split('/')[-1].split('_')[1].split('.')[0]
+                    code = [SPACE_INDEX if code == SPACE_TOKEN else encode_maps[c] for c in list(code)]
+                    self.labels.append(code)
+                    print("INSIDE")
+                else:
+                    print("OUTSIDE")
 
     @property
     def size(self):
@@ -87,7 +119,6 @@ class DataIterator:
         labels = []
         for i in indexs:
             labels.append(self.labels[i])
-
         return labels
 
     def input_index_generate_batch(self, index=None):

@@ -21,6 +21,9 @@ logger = logging.getLogger('Traing for OCR using CNN+LSTM+CTC')
 logger.setLevel(logging.INFO)
 
 
+
+
+
 def train(train_dir=None, val_dir=None, mode='train'):
     model = cnn_lstm_otc_ocr.LSTMOCR(mode)
     model.build_graph()
@@ -122,6 +125,8 @@ def train(train_dir=None, val_dir=None, mode='train'):
                     log = "{}/{} {}:{}:{} Epoch {}/{}, " \
                           "accuracy = {:.3f},avg_train_cost = {:.3f}, " \
                           "lastbatch_err = {:.3f}, time = {:.3f},lr={:.8f}"
+                    #print("\n".join(['|'+''.join([utils.decode_maps[char]+'|' for char in word if char >=0]) for word in dense_decoded]))
+                    print(utils.decode_strings(dense_decoded,ori_labels))
                     print(log.format(now.month, now.day, now.hour, now.minute, now.second,
                                      cur_epoch + 1, FLAGS.num_epochs, accuracy, avg_train_cost,
                                      lastbatch_err, time.time() - start_time, lr))

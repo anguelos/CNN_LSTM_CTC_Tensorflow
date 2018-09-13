@@ -110,7 +110,7 @@ class LSTMOCR(object):
         # self.global_step = tf.Variable(0, trainable=False)
         self.global_step = tf.train.get_or_create_global_step()
 
-        self.loss = tf.nn.ctc_loss(labels=self.labels,
+        self.loss = tf.nn.ctc_loss(labels=self.labels,ignore_longer_outputs_than_inputs=True,
                                    inputs=self.logits,
                                    sequence_length=self.seq_len)
         self.cost = tf.reduce_mean(self.loss)
